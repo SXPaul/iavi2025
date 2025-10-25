@@ -6,8 +6,8 @@ from glob import glob
 
 # -------------------------- 配置参数 --------------------------
 # 棋盘格参数（需与标定程序一致）
-chessboard_size = (9, 6)  # 内角点行列数
-square_size = 20  # 棋盘格边长(mm)
+chessboard_size = (11, 8)  # 内角点行列数
+square_size = 14.5  # 棋盘格边长(mm)
 
 # 标定参数文件路径（之前生成的内参和畸变系数）
 calibration_file = "Calibration_Results/calibration_params.npz"

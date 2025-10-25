@@ -4,8 +4,8 @@ import numpy as np
 
 # -------------------------- 配置参数（根据实际情况修改） --------------------------
 # 棋盘格参数（必须与标定程序一致）
-chessboard_size = (9, 6)  # 内角点行列数 (columns, rows)
-square_size = 20          # 棋盘格边长 (mm)
+chessboard_size = (11,8)  # 内角点行列数 (columns, rows)
+square_size = 14.5          # 棋盘格边长 (mm)
 
 # 标定参数文件路径
 calibration_file = "Calibration_Results/calibration_params.npz"

@@ -5,8 +5,8 @@ import cv2
 from glob import glob
 
 # -------------------------- 配置参数 --------------------------
-chessboard_size = (9, 6)  # 内角点行列数
-square_size = 20          # 棋盘格边长 (mm)
+chessboard_size = (11, 8)  # 内角点行列数
+square_size = 14.5  # 棋盘格边长(mm)
 calibration_file = "Calibration_Results/calibration_params.npz"
 image_dir = "../Data/images"
 camera_size = 50          # 相机模型大小
