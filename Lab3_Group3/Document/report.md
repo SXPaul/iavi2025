@@ -12,9 +12,9 @@ This section aims to complete two core tasks based on the previously finished si
 | Parameter Category       | Specific Settings                                                                 | Source Code Files          | Rationale                                                                 |
 |--------------------------|-----------------------------------------------------------------------------------|---------------------------|---------------------------------------------------------------------------|
 | Chessboard Parameters    | Inner corners: (11, 8) (columns × rows); Square size: 14.5 mm                        | All code files            | Consistent with the calibration phase (in `code.py`) to ensure world coordinate accuracy. |
-| Calibration Data         | Calibration file path: `Calibration_Results/calibration_params.npz` (contains `mtx` (intrinsic matrix), `dist` (distortion coefficients), `rvecs` (rotation vectors), `tvecs` (translation vectors)) | `AR_cube.py`, `check_pointcloud.py` | Reuses pre-calibrated intrinsic/extrinsic parameters to avoid re-calibration. |
-| PLY Generation Parameters | Camera model size: 50 mm; Chessboard point size: 5; Chessboard color: [0,1,0] (green); Camera color: [1,0,0] (red) | `check_pointcloud.py`     | Defined in the code configuration section, balancing visualization clarity and data simplicity. |
-| AR Projection (Cube)     | Cube size: 50 mm; Position: `(4×20, 3×20, 0)` = (80, 60, 0) mm; Face colors: blue (255,0,0), green (0,255,0), etc. | `AR_cube.py`, `code.py`   | Cube size/position matches the chessboard grid; high color distinction facilitates face differentiation. |
+| Calibration Data         | Calibration file path: `Calibration_Results/calibration_params.npz` (contains `mtx` (intrinsic matrix), `dist` (distortion coefficients), `rvecs` (rotation vectors), `tvecs` (translation vectors)) | `AR_cube.py`, `generate_ply.py`, | Reuses pre-calibrated intrinsic/extrinsic parameters to avoid re-calibration. |
+| PLY Generation Parameters | Chessboard color: red; Camera color: blue | `generate_ply.py`     | Defined in the `generate_ply.py` , make the point cloud look clearer and more straightforward |
+| AR Projection (Cube)     | Cube size: 50 mm; Position: `(4×20, 3×20, 0)` = (80, 60, 0) mm; Face colors: blue (255,0,0), green (0,255,0), etc. | `AR_cube.py`, `code.py`   | Cube size/position matches the chessboard grid.The six faces are defined as different colors to facilitate the determination of the correctness of the projection |
 | Camera Settings          | Resolution: 1280×720; Camera index: 0 (default); Corner detection flags: `CALIB_CB_ADAPTIVE_THRESH + CALIB_CB_FAST_CHECK + CALIB_CB_NORMALIZE_IMAGE` | `AR_cube.py`              | Reduces resolution to improve real-time performance; detection flags enhance adaptability to light changes. |
 
 
@@ -24,41 +24,36 @@ This section aims to complete two core tasks based on the previously finished si
 - NumPy: Data processing tool for all files, used for matrix operations and vertex coordinate handling.  
 
 
-### 1.3 Experiment Results & Data Processing
-#### 1.3.1 Task 3: PLY File Generation (`check_pointcloud.py`)
+### 1.3 Experiment Results 
+#### 1.3.1 Task 3: PLY File Generation (`generate_ply.py`)
 
-##### Step 1: Load Calibration Data and Chessboard Points
-1. Call the `load_calibration_data()` function to read the `calibration_params.npz` file, extracting the intrinsic matrix `mtx`, distortion coefficients `dist`, rotation vectors `rvecs`, and translation vectors `tvecs`. This function automatically checks for the existence of the calibration file and raises a `FileNotFoundError` if the file is missing.  
-2. Call the `get_chessboard_points()` function to generate chessboard world coordinates: a 88×3 array (corresponding to `11×8` corners) with Z-coordinate = 0 and 20 mm spacing between XY coordinates.  
+##### Step 1:Load Calibration Parameters
+The script reads the `Calibration_Results/calibration_params.npz` file to extract essential extrinsic parameters:
+- rvecs: Rotation vectors (each corresponds to one calibration image)
+- tvecs: Translation vectors (each corresponds to one calibration image) 
 
 
-##### Step 2: Correct Camera Pose and Construct Models
+##### Step 2: Generate 3D Coordinates of Chessboard Corners
 The correction of "dimension mismatch issues" in the code is critical to ensuring the accuracy of PLY visualization:
-1. **Rotation Vector to Matrix Conversion**: Call the `rotation_vector_to_matrix(rvec)` function to convert each rotation vector `rvec` in `rvecs` into a 3×3 rotation matrix `R`. A key correction is added in the code: `rvec = rvec.flatten()[:3]`—flattens the input vector and takes the first 3 elements to ensure it is 3-dimensional, avoiding shape errors caused by calibration data.  
-2. **Camera Pose Matrix**: Construct a 4×4 pose matrix for `rvec` and `tvec` of each image:  
-   - `pose_matrix[:3, :3] = R.T`: Transposes the rotation matrix to align the coordinate system.  
-   - `pose_matrix[:3, 3] = -R.T @ tvec.flatten()[:3]`: Corrects the `tvec` dimension via `flatten()[:3]`, then calculates the camera center in the world coordinate system.  
-3. **Construct Camera Model**: Call the `create_camera_actor(pose_matrix)` function to build a camera model (line set):  
-   - Defines the camera center, X/Y/Z axes (axis length = 50 mm), and frustum (FOV = 60°, far plane = 40 mm).  
-   - Key correction: `x_axis = pose_matrix[:3, 0].flatten() * size`—flattens the axis vector to avoid 2D/3D dimension mismatch, ensuring the model displays correctly.  
 
 
-##### Step 3: Assemble Point Cloud and Save PLY File
-1. **Chessboard Point Cloud**: Create `chessboard_pcd`, set its points to the chessboard world coordinates, and paint it green ([0,1,0]) using the `paint_uniform_color()` function.  
-2. **World Coordinate Axes**: Add `axes = o3d.geometry.TriangleMesh.create_coordinate_frame(size=100, origin=[0,0,0])` to mark the world origin.  
-3. **Save and Visualize**: Call the `visualize_camera_and_chessboard()` function to add the chessboard point cloud, all camera models, and world coordinate axes to the Open3D visualizer.  
+##### Step 3: Calculate Camera Centers
+For each calibration image, the camera center (3D position of the camera in the world coordinate system) is computed by:
+- Converting rotation vectors (rvecs) to rotation matrices via cv2.Rodrigues().
+- Applying the formula: $camera_{center} = -R.T @  tvec$  (where R is the rotation matrix, tvec is the translation vector).
+- Reshaping the result to ensure dimensional consistency for subsequent processing.
+##### Step 4: Export to PLY File
+- Merge chessboard corner points and camera center points into a single point cloud.
+- Assign colors for distinction: red for chessboard corners, blue for camera centers.
+- Write the point cloud data into a .ply file.
 
-##### Step 4: Visualization Result
-- **Spatial Distribution**: As shown in the figure, the chessboard appears as a green flat grid, with red camera centers distributed around it—covering front, side, and top views, which matches the diverse angles of images used for calibration.  
-- **Camera Orientation**: The X/Y/Z axes of each camera have clear orientations with no axis distortion—proving the effectiveness of the pose correction logic in `check_pointcloud.py`.  
+***Visualization Result of the Camera-Chessboard System*** 
+![alt text](Img/Goal3/Figure_1.png)
+![alt text](Img/Goal3/Figure_2.png)
+![alt text](Img/Goal3/Figure_3.png)
+In the point cloud map, it can be seen that the chessboard plane is in the xy plane,and  camera angles follows the positive direction of the Z-axis
 
-*Visualization Result of the Camera-Chessboard System  
-![result](./Img/Goal3/above.png)
-![result](./Img/Goal3/front.png)
-![result](./Img/Goal3/right.png)
-
-
-#### 1.3.2 Task 4 & Bonus: AR Projection (Code: `AR_cube.py`, `code.py`, `AR_cat.py`)
+#### 1.3.2 Task 4 & Bonus: AR Projection (Code: `AR_cube.py`, `code.py`)
 AR projection is implemented in two scenarios (simple cube and complex cat model) using the corresponding code files. The workflow is consistent, but model preprocessing differs:
 
 ##### Scenario 1: Colored Cube Projection (`AR_cube.py`)
