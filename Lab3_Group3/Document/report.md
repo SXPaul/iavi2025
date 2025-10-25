@@ -138,62 +138,31 @@ For each calibration image, the camera center (3D position of the camera in the 
 - Assign colors for distinction: red for chessboard corners, blue for camera centers.
 - Write the point cloud data into a .ply file.
 
-***Visualization Result of the Camera-Chessboard System*** 
-![alt text](Img/Goal3/Figure_1.png)
-![alt text](Img/Goal3/Figure_2.png)
-![alt text](Img/Goal3/Figure_3.png)
-In the point cloud map, it can be seen that the chessboard plane is in the xy plane,and  camera angles follows the positive direction of the Z-axis
-
-#### 1.3.4 Task 4 & Bonus: AR Projection (Code: `AR_cube.py`, `code.py`)
-AR projection is implemented in two scenarios (simple cube and complex cat model) using the corresponding code files. The workflow is consistent, but model preprocessing differs:
-
-##### Scenario 1: Colored Cube Projection (`AR_cube.py`)
-###### Step 1: Define Cube Model (`define_colored_cube()` Function)
-1. **Vertex Calculation**: For a 50 mm-sized cube centered at (80, 60, 0) mm, calculate the coordinates of 8 vertices:  
-   - Half-size = 25 mm; vertices include front (Z=25) and back (Z=-25) faces (e.g., front-left-bottom vertex: `(-25, -25, 25)`).  
-   - Translate vertices to the target position: `vertices += cube_position` (ensures the cube is centered and overlaid on the chessboard).  
-2. **Face Definition**: Define 6 faces using vertex indices (e.g., front face: `[0,1,2,3]`, back face: `[4,5,6,7]`).  
 
 
-###### Step 2: Real-Time Projection (`ar_cube_projection()` Function)
-1. **Load Calibration Data and Initialize Camera**: Load `mtx` and `dist` via the `load_calibration_params()` function, open the camera, and set the resolution to 1280×720 to balance speed and clarity.  
-2. **Corner Detection and Extrinsic Estimation**:  
-   - Convert each frame to grayscale, call the `findChessboardCorners` function to detect corners (using adaptive threshold/normalization flags to improve stability).  
-   - Refine corners using the `cornerSubPix` function.  
-   - Generate chessboard world coordinates `objp`, then call the `solvePnP(objp, corners_refined, mtx, dist)` function to estimate extrinsic parameters—the code uses an "extrinsic cache" optimization: if detection fails, it reuses the `rvec`/`tvec` from the previous frame to avoid model disappearance.  
-3. **3D-to-2D Projection and Rendering**:  
-   - Vertex projection: `cube_2d, _ = cv2.projectPoints(cube_vertices, rvec, tvec, mtx, dist)`—reshape the result into (8,2) integer pixel coordinates.  
-   - Draw semi-transparent faces: Create an overlay, fill each face with `face_colors` using the `fillPoly` function, then blend it with the original frame via the `addWeighted` function.  
-   - Draw white edges: Outline face boundaries using the `polylines` function to solve the "boundary blur" issue.  
+#### 1.3.4 Task 4 : AR Projection (`code.py，fucntion:project_cube_to_image`)
 
 
-##### Scenario 2: Cat Model Projection (`AR_cat.py`)
-###### Step 1: Model Preprocessing (`load_3d_model()` Function)
-1. **Load PLY Model**: Read `cat.ply` using the `o3d.io.read_triangle_mesh()` function, check for the existence of vertices, and raise a `ValueError` if vertices are missing.  
-2. **Model Alignment**:  
-   - Centering: `vertices = vertices - np.mean(vertices, axis=0)`—moves the model center to the origin.  
-   - Scaling: `vertices = vertices * model_scale`—scales the model by 300x to fit the chessboard size.  
-   - Z-alignment: `vertices[:, 2] -= np.min(vertices[:, 2])`—lowers the model so its lowest point (feet) has Z=0, avoiding floating.  
-   - Translation: `vertices += model_offset`—moves the model to (80, 60, 0) mm, consistent with the cube’s position.  
+##### Step 1: Define Virtual 3D Cube
+A 3D cube model is defined with 8 vertices and 6 colored faces (for intuitive depth perception). The cube’s size is linked to the chessboard’s physical dimensions (cube_size = square_size * 2), ensuring the projection scale is consistent with the real scene.
+##### Step 2: Pre-Projection: Image Undistortion
+Before projecting the cube, images are undistorted to correct lens distortion—this ensures the cube projection aligns with the "true" perspective of the scene. The process uses `cv2.getOptimalNewCameraMatrix()` and `cv2.undistort()`
 
+##### Step 3: 3D-to-2D Cube Projection
+The virtual cube is projected onto undistorted images using cv2.projectPoints(), which transforms 3D vertices into 2D pixel coordinates by accounting for:intrinsic parameters and
+extrinsic parameters (rvec, tvec).
+Key steps:
+- Projection: cv2.projectPoints(cube_3d, rvec, tvec, mtx, dist) outputs cube_2d (2D pixel coordinates of cube vertices).
+- Coordinate Adjustment: Since undistorted images are cropped to roi, cube_2d coordinates are offset by (x_roi, y_roi) to align with the cropped image.
+- Face & Edge Rendering:
+   - Semi-transparent faces: Drawn with cv2.fillConvexPoly() and blended with the undistorted image (alpha=0.5 via cv2.addWeighted()), ensuring the chessboard remains visible.
+   - White edges: Drawn with cv2.line() (thickness=2) to define the cube’s 3D shape.
 
-###### Step 2: Projection and Rendering (`ar_realtime_projection()` Function)
-The workflow is consistent with cube projection, except for the rendering method:  
-- After projecting vertices to 2D coordinates via the `projectPoints` function, iterate over the model’s triangular faces.  
-- For each triangle, obtain the 2D coordinates of its 3 vertices, fill the triangle with magenta `(147,20,255)` using the `fillConvexPoly` function, then draw white edges via the `line` function.  
+##### Step 4 : Result Saving 
+To avoid redundant computation, the module processes a subset of valid images (up to 3, configurable) and saves outputs to the Calibration_Results directory:
+- Filename format: undistorted_with_colored_cube_{i}.png (where i is the image index).
+- Example output: An undistorted chessboard image with a semi-transparent colored cube overlaid, showing correct perspective alignment (e.g., the cube’s base face lies flat on the chessboard).
 
-
-##### Step 3: AR Projection Results
-- **Cube Projection**: As shown in the figure, the cube is stably overlaid on the chessboard—semi-transparent faces do not block the chessboard background, and white edges align with the chessboard grid.  
-- **Cat Model Projection**: As shown in the figure, the cat model’s "feet" touch the chessboard surface with a clear outline—proving the effectiveness of the Z-alignment and scaling logic in the `load_3d_model()` function.  
-  
-
-*AR Projection Result of Colored Cube*  
-![result](./Img/Goal4/ar_cube.png)  
-*AR Projection Result of Cat Model*  
-![result](./Img/Goal4/ar_cat.png)
-
-*Both of these two screenshots were captured in real time, so there is a minor delay in the AR projection, which leads to a slight misalignment in the displayed AR projection. This phenomenon occurs because I was holding the tablet with one hand while taking screenshots with the other, making it difficult to keep the device stable and resulting in slight tremors.*
 
 ### 1.4 Result Analysis & Discussion
 
@@ -217,34 +186,61 @@ In the study on the influence of viewing angles, there are 15 photos with angles
 Other potential influencing factors also include the clarity and flatness of the chessboard, lighting and contrast, as well as slight movements of the chessboard. Since a fixed tablet was used to display the images in this experiment (we trust the retina display and glass craftsmanship of the tablet), and the shooting was completed within a short period of time, the aforementioned factors are not considered.
 
 
-#### 1.4.3 PLY Visualization: Code Optimization and Result Reliability
-The key to successful PLY file generation lies in **dimension correction** in `check_pointcloud.py`:  
-- Before correction, unflattened `rvec`/`tvec` would cause errors in the `cv2.Rodrigues()` function or matrix multiplication. The code ensures all vectors are 3-dimensional via `flatten()[:3]`, resolving shape mismatch issues.  
-- The camera model’s line set (axes + frustum) directly reflects the accuracy of extrinsic parameters: If camera views are limited (e.g., only front views), it indicates insufficient view angles during calibration, which would lead to unstable AR projection. The distributed camera centers confirm that the calibration dataset has robustness.  
+#### 1.4.3 PLY Visualization
+***Visualization Result of the Camera-Chessboard System*** 
+![alt text](Img/Goal3/Figure_1.png)
+![alt text](Img/Goal3/Figure_2.png)
+![alt text](Img/Goal3/Figure_3.png)
+In the point cloud map, it can be seen that the chessboard plane is in the xy plane,and  camera angles follows the positive direction of the Z-axis.
+*The pointcloud file is in `Calibration_Results`.*
 
+In addition, a series of comparison pictures of the undistorted photos and original photos are provided here, which can visually show the correctness of the calibration
+![alt text](../Code/Calibration_Results/original_vs_undistorted_0.png)
+![alt text](../Code/Calibration_Results/original_vs_undistorted_1.png)
+![alt text](../Code/Calibration_Results/original_vs_undistorted_2.png)
+#### 1.4.4 AR Projection
 
-#### 1.4.4 AR Projection: Code-Driven Stability and Accuracy
-1. **Impact of Code Optimization on AR Performance**:  
-   - **Extrinsic Cache (`AR_cube.py`)**: When the chessboard is partially occluded, `findChessboardCorners` fails. The code reuses the `rvec`/`tvec` from the previous frame instead of stopping projection, eliminating "model flickering" in real-time scenarios.  
-   - **Semi-Transparent Faces (`AR_cube.py`)**: The logic of `addWeighted(overlay, 0.6, frame, 0.4, 0)` balances the visibility of the AR model and the clarity of the background, avoiding "model occlusion of key chessboard corners" (which would invalidate subsequent detection).  
-   - **Model Preprocessing (`AR_cat.py`)**: Without centering, the cat model would deviate from the chessboard; without Z-alignment, the model would float in the air—both issues are resolved by the `load_3d_model()` function.  
+Here we give images about undistorted chessboard with colored cube from different angle.
+![alt text](../Code/Calibration_Results/undistorted_with_colored_cube_0.png)
+![alt text](../Code/Calibration_Results/undistorted_with_colored_cube_1.png)
+![alt text](../Code/Calibration_Results/undistorted_with_colored_cube_2.png)
+![alt text](../Code/Calibration_Results/undistorted_with_colored_cube_3.png)
 
-2. **Correlation Between Calibration Error and AR Quality**:  
-From `code.py`, the mean reprojection error is approximately 0.1083 pixels, which directly determines AR accuracy:  
-- If the error exceeds 2 pixels, the cube/cat model would be misaligned (e.g., cube edges not parallel to the chessboard grid).  
-- The consistency between the error value and AR alignment proves that the calibration parameters used in all AR code are reliable.  
-
+The colored cube aligns with the chessboard’s perspective:
+- The cube’s base face lies flat on the chessboard plane
+- Distant cube faces appear smaller (consistent with perspective projection).
+- Colored faces and white edges make the cube’s 3D structure easily distinguishable.
 
 ### 1.5 Experiment Conclusion
 1. **Task Completion**:  
    - **Task 1 & 2**: As we have shown in the previous section.
-   - **Task 3**: `check_pointcloud.py` successfully visualizes the camera-chessboard system, with good spatial consistency between camera centers and the chessboard point cloud—verifying the accuracy of extrinsic parameters.  
-   - **Task 4**: `code.py` and `AR_cat.py` realize stable AR projection for both simple (cube) and complex (cat) models. The models align with the chessboard, proving that calibration parameters can be applied to practical AR scenarios.  
+   - **Task 3**: `generate_ply.py` successfully visualizes the camera-chessboard system, with good spatial consistency between camera centers and the chessboard point cloud—verifying the accuracy of extrinsic parameters.  
+   - **Task 4**: `code.py,function:project_cube_to_image` and `AR_cube.py` realize stable AR projection  simple (cube) . The models align with the chessboard, proving that calibration parameters can be applied to practical AR scenarios.  
 
 2. **Key Takeaway**:  
 All results rely on the **consistency of parameters and logic** across code files. This consistency ensures that calibration results are reusable, and AR/PLY tasks can be completed without re-collecting data—highlighting the advantages of the modular design of the provided code.  
 Tasks 1 & 2 and Tasks 3 & 4 were carried out nearly in parallel, as shown in `lab3_Saure.ipynb`. However, the part of Task 1 in two workflows are highly similar in terms of processing logic, returned parameter content, and other aspects. The only difference is that the camera calibration part in `lab3_Saure.ipynb` only serves Task 2 and does not participate in subsequent experimental operations.
 
 ## 2. Bonus Part
-Bonus part results are presented in Section 1.3.2 Task 4 & Bonus: AR Projection# 1.Basic Part
+###  Colored Cube Projection (`AR_cube.py`)
+###### Step 1: Define Cube Model (`define_colored_cube()` Function)
+1. **Vertex Calculation**: For a 50 mm-sized cube centered at (80, 60, 0) mm, calculate the coordinates of 8 vertices:  
+   - Half-size = 25 mm; vertices include front (Z=25) and back (Z=-25) faces (e.g., front-left-bottom vertex: `(-25, -25, 25)`).  
+   - Translate vertices to the target position: `vertices += cube_position` (ensures the cube is centered and overlaid on the chessboard).  
+2. **Face Definition**: Define 6 faces using vertex indices (e.g., front face: `[0,1,2,3]`, back face: `[4,5,6,7]`).  
 
+
+###### Step 2: Real-Time Projection (`ar_cube_projection()` Function)
+1. **Load Calibration Data and Initialize Camera**: Load `mtx` and `dist` via the `load_calibration_params()` function, open the camera, and set the resolution to 1280×720 to balance speed and clarity.  
+2. **Corner Detection and Extrinsic Estimation**:  
+   - Convert each frame to grayscale, call the `findChessboardCorners` function to detect corners (using adaptive threshold/normalization flags to improve stability).  
+   - Refine corners using the `cornerSubPix` function.  
+   - Generate chessboard world coordinates `objp`, then call the `solvePnP(objp, corners_refined, mtx, dist)` function to estimate extrinsic parameters—the code uses an "extrinsic cache" optimization: if detection fails, it reuses the `rvec`/`tvec` from the previous frame to avoid model disappearance.  
+3. **3D-to-2D Projection and Rendering**:  
+   - Vertex projection: `cube_2d, _ = cv2.projectPoints(cube_vertices, rvec, tvec, mtx, dist)`—reshape the result into (8,2) integer pixel coordinates.  
+   - Draw semi-transparent faces: Create an overlay, fill each face with `face_colors` using the `fillPoly` function, then blend it with the original frame via the `addWeighted` function.  
+   - Draw white edges: Outline face boundaries using the `polylines` function to solve the "boundary blur" issue.  
+
+###  Result
+Run `AR_cube.py` to check the real-time projection.
+Here we give some screenshot of the real-time projection,and we a demo video is in `Data\video`

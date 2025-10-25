@@ -23,6 +23,7 @@ def load_images_and_detect_corners(image_dir, chessboard_size):
     
     images = []
     valid_indices = []
+    cnt=0
     print(f"Starting to detect corners in {len(image_paths)} images...")
     for i, path in enumerate(image_paths):
         img = cv2.imread(path)
@@ -39,9 +40,11 @@ def load_images_and_detect_corners(image_dir, chessboard_size):
             )
             img_points.append(corners_refined)
             
-            img_with_corners = cv2.drawChessboardCorners(img.copy(), chessboard_size, corners_refined, ret)
-            save_path = os.path.join(output_dir, f"corners_detected_{i}.png")
-            cv2.imwrite(save_path, img_with_corners)
+            if cnt <5:
+                img_with_corners = cv2.drawChessboardCorners(img.copy(), chessboard_size, corners_refined, ret)
+                save_path = os.path.join(output_dir, f"corners_detected_{i}.png")
+                cv2.imwrite(save_path, img_with_corners)
+                cnt +=1
             print(f"Image {i+1}/{len(image_paths)}: Corner detection successful")
         else:
             print(f"Image {i+1}/{len(image_paths)}: Corner detection failed")
@@ -95,7 +98,7 @@ def project_cube_to_image(images, valid_indices, mtx, dist, rvecs, tvecs):
     ]
     
     # Project cube
-    for i in range(min(3, len(valid_indices))):
+    for i in range(min(5, len(valid_indices))):
         img_idx = valid_indices[i]
         img = images[img_idx].copy()
         rvec = rvecs[i]  
@@ -133,15 +136,6 @@ def project_cube_to_image(images, valid_indices, mtx, dist, rvecs, tvecs):
 
 
 def visualize_results(images, valid_indices, mtx, dist, image_paths, rvecs, tvecs):
-    # Chessboard visualization
-    first_valid_idx = valid_indices[0]
-    chessboard_vis = images[first_valid_idx].copy()
-    cv2.putText(
-        chessboard_vis, f"Chessboard ({chessboard_size[0]}x{chessboard_size[1]} corners)",
-        (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2
-    )
-    cv2.imwrite(os.path.join(output_dir, "chessboard_visualization.png"), chessboard_vis)
-    
     # Camera positions visualization
     num_vis = min(5, len(valid_indices))
     vis_indices = np.linspace(0, len(valid_indices)-1, num_vis, dtype=int)
@@ -174,7 +168,7 @@ def visualize_results(images, valid_indices, mtx, dist, image_paths, rvecs, tvec
         cv2.imwrite(os.path.join(output_dir, f"original_vs_undistorted_{i}.png"), comparison_img)
     
     project_cube_to_image(images, valid_indices, mtx, dist, rvecs, tvecs)
-    print("\nAll visualizations completed (including colored cube)")
+    print("\nAll completed ")
 
 
 if __name__ == "__main__":
@@ -193,15 +187,6 @@ if __name__ == "__main__":
             
             # Visualization (including colored cube)
             visualize_results(images, valid_indices, mtx, dist, img_paths, rvecs, tvecs)
-            
-            # Save calibration analysis
-            with open(os.path.join(output_dir, "calibration_analysis.txt"), "w") as f:
-                f.write("Analysis of factors affecting calibration quality:\n\n")
-                f.write(f"1. Number of images: {len(valid_indices)} valid images (need >5)\n")
-                f.write("2. Coverage: Chessboard must cover image edges\n")
-                f.write("3. View angles: Multiple angles improve robustness\n")
-                f.write("4. Other factors: Chessboard accuracy, lighting, camera stability\n")
-                f.write(f"Mean reprojection error: {mean_error:.4f} pixels (<1 is good)\n")
-        
+
     except Exception as e:
         print("Error:", str(e))
