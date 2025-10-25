@@ -1,10 +1,17 @@
 # Lab3 Report: Single Camera Calibration - PLY 3D Visualization & AR Projection
 ## 1. Basic Part
 ### 1.1 Experiment Objectives  
+Goal 1 & 2:
+This section aims to get the camera calibration results for 3D visualization, and discuss the impact of different factors. 
+
+1. Finish intrinsic and extrinsic calibration.
+2. Discuss **the impact of different factors** (e.g., # of images, coverage of the chessboard, view angle, etc) over the final reprojection error.
+
 Goal 3 & 4:  
 This section aims to complete two core tasks based on the previously finished single-camera intrinsic and extrinsic calibration results, strictly relying on the provided code files:  
-1. Generate a `.ply` file containing **camera centers** and **chessboard point cloud** for 3D visualization — this verifies the spatial consistency of calibration results.  
-2. Implement **Augmented Reality (AR) projection**: Overlay 3D objects onto input images, including colored cubes via `AR_cube.py` and `code.py` . The former realizes real-time projection, while the latter outputs photos of the projected cube
+
+3. Generate a `.ply` file containing **camera centers** and **chessboard point cloud** for 3D visualization — this verifies the spatial consistency of calibration results.  
+4. Implement **Augmented Reality (AR) projection**: Overlay 3D objects onto input images, including colored cubes via `AR_cube.py` and `code.py` . The former realizes real-time projection, while the latter outputs photos of the projected cube
 
 
 ### 1.2 Experiment Setup
@@ -24,8 +31,92 @@ This section aims to complete two core tasks based on the previously finished si
 - NumPy: Data processing tool for all files, used for matrix operations and vertex coordinate handling.  
 
 
-### 1.3 Experiment Results 
-#### 1.3.1 Task 3: PLY File Generation (`generate_ply.py`)
+### 1.3 Experiment Results & Data Processing
+
+#### 1.3.1 Task 1: Camera Calibration
+To begin with, we took 60 photos of the chessboard in different view angles and different distances, during which we confirmed the integrity of the chessboard and the clarity of the image
+Camera intrinsic and extrinsic parameters are calibrated through corner detection. The calibration board we used has a configuration of 8 rows and 11 columns, with each grid having a size of 14.5 mm, and a total of 20 photos were used (the reason will be explained in part 1.4.2):
+![](./Img/Goal1&2/corners.png)
+The output is as follows:
+```
+=== Intrinsic matrix (mtx) ===
+[[3.66498106e+03 0.00000000e+00 1.25107241e+03]
+ [0.00000000e+00 3.66359428e+03 9.39504971e+02]
+ [0.00000000e+00 0.00000000e+00 1.00000000e+00]]
+
+=== Distortion coefficients (dist) ===
+[[-5.41559209e-01  3.68100960e-02  3.26237844e-03 -1.79983624e-04
+   7.36295946e-01]]
+
+=== Average reprojection error ===
+0.7126619013786216
+```
+
+#### 1.3.2 Task 2: Impact of Different Factors
+
+##### number of images vs. reprojection error
+We performed camera calibration using 10, 20, 30, 40, 50, and 60 photos respectively, and the results are as follows:
+```python
+num_list = [10, 20, 30, 40, 50, 60]
+error_list = []
+for num in num_list:
+    sub_obj = obj_points[:num]
+    sub_img = img_points[:num]
+    ret_sub, _, _, _, _ = cv2.calibrateCamera(sub_obj, sub_img, (w, h), None, None)
+    error_list.append(ret_sub)
+```
+![](./Img/Goal1&2/number.png)
+
+##### coverage of the chessboard vs. reprojection error
+We divided the coverage of the chessboard into two groups: **large** (where the chessboard touches the edges or corners of the image, i.e., it touches the edges in two directions simultaneously) and **small** (the remaining images, where the chessboard is positioned at the center of the image). The results are as follows:
+```python
+def get_coverage_level(corners, img_w, img_h):
+    corners_xy = corners.reshape(-1, 2)
+    x_coords, y_coords = corners_xy[:, 0], corners_xy[:, 1]
+    x_min, x_max, y_min, y_max = x_coords.min(), x_coords.max(), y_coords.min(), y_coords.max()
+
+    (edge_x, edge_y) = 0.2 * (img_w, img_h)
+    
+    touch_left, touch_right = (x_min < edge_x), (x_max > (img_w - edge_x))
+    touch_top, touch_bottom = (y_min < edge_y), (y_max > (img_h - edge_y))
+    
+    touch_corner = (touch_left and touch_top) or (touch_right and touch_top) or (touch_left and touch_bottom) or (touch_right and touch_bottom)
+    
+    if touch_corner:
+        return 'large'
+    else:
+        return 'small'
+```
+![](./Img/Goal1&2/coverage.png)
+
+##### view angle vs. reprojection error
+We obtained the shooting angles of each photo using the rotation vector of the photo: the angles range from 1.6° to 34.6°, and are divided into two groups (**large** and **small**) with 15° as the dividing line. The results are as follows:
+```python
+# ===============AI generated==============================
+angles = []
+for rvec in rvecs:
+    R, _ = cv2.Rodrigues(rvec)  # 旋转矩阵
+    camera_z = R[:, 2]  # 相机光轴方向向量
+    cos_theta = abs(camera_z[2])
+    theta = math.degrees(math.acos(cos_theta))  # 视角角度（°）
+    angles.append(theta)
+
+print(f"Angle：{min(angles):.1f}° - {max(angles):.1f}°")
+# =========================================================
+threshold = 15
+small_angle = []
+large_angle = []
+
+for i in range(len(angles)):
+    if angles[i] < threshold:
+        small_angle.append(i)
+    else:
+        large_angle.append(i)
+```
+![](./Img/Goal1&2/angle.png)
+
+
+#### 1.3.3 Task 3: PLY File Generation (`generate_ply.py`)
 
 ##### Step 1:Load Calibration Parameters
 The script reads the `Calibration_Results/calibration_params.npz` file to extract essential extrinsic parameters:
@@ -53,7 +144,7 @@ For each calibration image, the camera center (3D position of the camera in the 
 ![alt text](Img/Goal3/Figure_3.png)
 In the point cloud map, it can be seen that the chessboard plane is in the xy plane,and  camera angles follows the positive direction of the Z-axis
 
-#### 1.3.2 Task 4 & Bonus: AR Projection (Code: `AR_cube.py`, `code.py`)
+#### 1.3.4 Task 4 & Bonus: AR Projection (Code: `AR_cube.py`, `code.py`)
 AR projection is implemented in two scenarios (simple cube and complex cat model) using the corresponding code files. The workflow is consistent, but model preprocessing differs:
 
 ##### Scenario 1: Colored Cube Projection (`AR_cube.py`)
@@ -104,18 +195,35 @@ The workflow is consistent with cube projection, except for the rendering method
 
 *Both of these two screenshots were captured in real time, so there is a minor delay in the AR projection, which leads to a slight misalignment in the displayed AR projection. This phenomenon occurs because I was holding the tablet with one hand while taking screenshots with the other, making it difficult to keep the device stable and resulting in slight tremors.*
 
-
-
-
-
 ### 1.4 Result Analysis & Discussion
-#### 1.4.1 PLY Visualization: Code Optimization and Result Reliability
+
+#### 1.4.1 Camera Calibration
+This section only gets the camera calibration result. The details will be discussed in the next section.
+
+#### 1.4.2 Impact of Different Factors
+
+##### number of images vs. reprojection error
+As can be seen from the figure, the average reprojection error increases as the number of images increases. When the number of images exceeds 60, the error surges to more than 1. When the number of images is extremely small (10 images), the sample variation range is small, and the results are more consistent, but there may be a deviation from the true value. When the number of samples is 20 or 30, the perspective variation and the number of images are balanced, resulting in relatively reasonable results. When the number of images is excessive (more than 50), due to the uneven quality of different images and the influence of environmental noise, errors will be introduced into the calibration itself, and the error accumulation effect caused by the number of images is also very significant. Therefore, **the appropriate number of images for camera calibration should be 20-30**.
+
+##### coverage of the chessboard vs. reprojection error
+There are 14 images with small chessboard coverage and 46 images with large chessboard coverage. We selected 14 images from each category for camera calibration. It can be observed that the average reprojection error of the group with large coverage is significantly lower than that of the group with small coverage. This is because large coverage provides stronger field-of-view constraints for the calibration algorithm and reduces the ambiguity in the estimation of intrinsic parameters and distortion coefficients. Specifically, large coverage offers more comprehensive **field-of-view sampling information** and avoids **redundancy in point set distribution**, thereby enhancing the uniqueness of constraints.
+
+##### view angle vs. reprojection error
+In the study on the influence of viewing angles, there are 15 photos with angles less than 15°, and 45 photos with angles greater than 15°. The average reprojection error of the large-angle group is smaller, which is consistent with the camera calibration principle. This is due to the following two reasons:
+1. Stronger perspective constraints: The chessboard under a large viewing angle (with significant tilt) exhibits obvious perspective distortion of "near larger, far smaller". This distortion contains richer camera pose information (rotation and translation), which can provide stronger constraints for the calibration algorithm and reduce the ambiguity in the estimation of intrinsic parameters (such as distortion coefficients).
+2. More three-dimensional point set distribution: Under a large viewing angle, the distribution of chessboard corners in the image is more scattered (even covering the edges/corners), which is equivalent to providing "more three-dimensional" sampling information. Compared with small viewing angles (frontal view, with point sets concentrated in the center), it can better reflect the true imaging characteristics of the camera.
+   
+##### other factors
+Other potential influencing factors also include the clarity and flatness of the chessboard, lighting and contrast, as well as slight movements of the chessboard. Since a fixed tablet was used to display the images in this experiment (we trust the retina display and glass craftsmanship of the tablet), and the shooting was completed within a short period of time, the aforementioned factors are not considered.
+
+
+#### 1.4.3 PLY Visualization: Code Optimization and Result Reliability
 The key to successful PLY file generation lies in **dimension correction** in `check_pointcloud.py`:  
 - Before correction, unflattened `rvec`/`tvec` would cause errors in the `cv2.Rodrigues()` function or matrix multiplication. The code ensures all vectors are 3-dimensional via `flatten()[:3]`, resolving shape mismatch issues.  
 - The camera model’s line set (axes + frustum) directly reflects the accuracy of extrinsic parameters: If camera views are limited (e.g., only front views), it indicates insufficient view angles during calibration, which would lead to unstable AR projection. The distributed camera centers confirm that the calibration dataset has robustness.  
 
 
-#### 1.4.2 AR Projection: Code-Driven Stability and Accuracy
+#### 1.4.4 AR Projection: Code-Driven Stability and Accuracy
 1. **Impact of Code Optimization on AR Performance**:  
    - **Extrinsic Cache (`AR_cube.py`)**: When the chessboard is partially occluded, `findChessboardCorners` fails. The code reuses the `rvec`/`tvec` from the previous frame instead of stopping projection, eliminating "model flickering" in real-time scenarios.  
    - **Semi-Transparent Faces (`AR_cube.py`)**: The logic of `addWeighted(overlay, 0.6, frame, 0.4, 0)` balances the visibility of the AR model and the clarity of the background, avoiding "model occlusion of key chessboard corners" (which would invalidate subsequent detection).  
@@ -129,11 +237,13 @@ From `code.py`, the mean reprojection error is approximately 0.1083 pixels, whic
 
 ### 1.5 Experiment Conclusion
 1. **Task Completion**:  
+   - **Task 1 & 2**: As we have shown in the previous section.
    - **Task 3**: `check_pointcloud.py` successfully visualizes the camera-chessboard system, with good spatial consistency between camera centers and the chessboard point cloud—verifying the accuracy of extrinsic parameters.  
    - **Task 4**: `code.py` and `AR_cat.py` realize stable AR projection for both simple (cube) and complex (cat) models. The models align with the chessboard, proving that calibration parameters can be applied to practical AR scenarios.  
 
 2. **Key Takeaway**:  
 All results rely on the **consistency of parameters and logic** across code files. This consistency ensures that calibration results are reusable, and AR/PLY tasks can be completed without re-collecting data—highlighting the advantages of the modular design of the provided code.  
+Tasks 1 & 2 and Tasks 3 & 4 were carried out nearly in parallel, as shown in `lab3_Saure.ipynb`. However, the part of Task 1 in two workflows are highly similar in terms of processing logic, returned parameter content, and other aspects. The only difference is that the camera calibration part in `lab3_Saure.ipynb` only serves Task 2 and does not participate in subsequent experimental operations.
 
 ## 2. Bonus Part
 Bonus part results are presented in Section 1.3.2 Task 4 & Bonus: AR Projection# 1.Basic Part
