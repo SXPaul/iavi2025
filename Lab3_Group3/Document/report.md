@@ -3,8 +3,8 @@
 ### 1.1 Experiment Objectives  
 Goal 3 & 4:  
 This section aims to complete two core tasks based on the previously finished single-camera intrinsic and extrinsic calibration results, strictly relying on the provided code files:  
-1. Generate a `.ply` file containing **camera centers** and **chessboard point cloud** for 3D visualization in MeshLab—this verifies the spatial consistency of calibration results.  
-2. Implement **Augmented Reality (AR) projection**: Overlay 3D objects onto input images, including colored cubes (via `AR_cube.py` and `code.py`) and a cat model (via `AR_cat.py`).  
+1. Generate a `.ply` file containing **camera centers** and **chessboard point cloud** for 3D visualization — this verifies the spatial consistency of calibration results.  
+2. Implement **Augmented Reality (AR) projection**: Overlay 3D objects onto input images, including colored cubes via `AR_cube.py` and `code.py` . The former realizes real-time projection, while the latter outputs photos of the projected cube
 
 
 ### 1.2 Experiment Setup
@@ -12,15 +12,14 @@ This section aims to complete two core tasks based on the previously finished si
 | Parameter Category       | Specific Settings                                                                 | Source Code Files          | Rationale                                                                 |
 |--------------------------|-----------------------------------------------------------------------------------|---------------------------|---------------------------------------------------------------------------|
 | Chessboard Parameters    | Inner corners: (11, 8) (columns × rows); Square size: 14.5 mm                        | All code files            | Consistent with the calibration phase (in `code.py`) to ensure world coordinate accuracy. |
-| Calibration Data         | Calibration file path: `Calibration_Results/calibration_params.npz` (contains `mtx` (intrinsic matrix), `dist` (distortion coefficients), `rvecs` (rotation vectors), `tvecs` (translation vectors)) | `AR_cube.py`, `check_pointcloud.py`, `AR_cat.py` | Reuses pre-calibrated intrinsic/extrinsic parameters to avoid re-calibration. |
+| Calibration Data         | Calibration file path: `Calibration_Results/calibration_params.npz` (contains `mtx` (intrinsic matrix), `dist` (distortion coefficients), `rvecs` (rotation vectors), `tvecs` (translation vectors)) | `AR_cube.py`, `check_pointcloud.py` | Reuses pre-calibrated intrinsic/extrinsic parameters to avoid re-calibration. |
 | PLY Generation Parameters | Camera model size: 50 mm; Chessboard point size: 5; Chessboard color: [0,1,0] (green); Camera color: [1,0,0] (red) | `check_pointcloud.py`     | Defined in the code configuration section, balancing visualization clarity and data simplicity. |
 | AR Projection (Cube)     | Cube size: 50 mm; Position: `(4×20, 3×20, 0)` = (80, 60, 0) mm; Face colors: blue (255,0,0), green (0,255,0), etc. | `AR_cube.py`, `code.py`   | Cube size/position matches the chessboard grid; high color distinction facilitates face differentiation. |
-| AR Projection (Cat Model)| Model path: `cat.ply`; Scale: 300; Offset: `(4×20, 3×20, 0)` = (80, 60, 0) mm; Z-alignment: Subtract the minimum Z-value of vertices | `AR_cat.py`               | Ensures the cat model fits the chessboard size and "touches" the chessboard surface without floating effects. |
 | Camera Settings          | Resolution: 1280×720; Camera index: 0 (default); Corner detection flags: `CALIB_CB_ADAPTIVE_THRESH + CALIB_CB_FAST_CHECK + CALIB_CB_NORMALIZE_IMAGE` | `AR_cube.py`              | Reduces resolution to improve real-time performance; detection flags enhance adaptability to light changes. |
 
 
 #### 1.2.2 Tool & Library Dependencies
-- Open3D: Used for point cloud/line set construction in `check_pointcloud.py` and PLY model loading in `AR_cat.py`.  
+- Open3D: Used for point cloud/line set construction in `check_pointcloud.py` .
 - OpenCV: Core library for all files—enables `findChessboardCorners` (corner detection), `solvePnP` (extrinsic estimation), `projectPoints` (3D-to-2D projection), and image rendering.  
 - NumPy: Data processing tool for all files, used for matrix operations and vertex coordinate handling.  
 
