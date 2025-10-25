@@ -193,19 +193,18 @@ Other potential influencing factors also include the clarity and flatness of the
 ![alt text](Img/Goal3/Figure_3.png)
 In the point cloud map, it can be seen that the chessboard plane is in the xy plane,and  camera angles follows the positive direction of the Z-axis.
 *The pointcloud file is in `Calibration_Results`.*
-
 In addition, a series of comparison pictures of the undistorted photos and original photos are provided here, which can visually show the correctness of the calibration
-![alt text](../Code/Calibration_Results/original_vs_undistorted_0.png)
-![alt text](../Code/Calibration_Results/original_vs_undistorted_1.png)
-![alt text](../Code/Calibration_Results/original_vs_undistorted_2.png)
+![alt text](Img/Goal3/original_vs_undistorted_0.png)
+![alt text](Img/Goal3/original_vs_undistorted_1.png)
+![alt text](Img/Goal3/original_vs_undistorted_2.png)
+
 #### 1.4.4 AR Projection
 
 Here we give images about undistorted chessboard with colored cube from different angle.
-![alt text](../Code/Calibration_Results/undistorted_with_colored_cube_0.png)
-![alt text](../Code/Calibration_Results/undistorted_with_colored_cube_1.png)
-![alt text](../Code/Calibration_Results/undistorted_with_colored_cube_2.png)
-![alt text](../Code/Calibration_Results/undistorted_with_colored_cube_3.png)
-
+![alt text](Img/Goal3/undistorted_with_colored_cube_0.png)
+![alt text](Img/Goal3/undistorted_with_colored_cube_1.png)
+![alt text](Img/Goal3/undistorted_with_colored_cube_2.png)
+![alt text](Img/Goal3/undistorted_with_colored_cube_3.png)
 The colored cube aligns with the chessboard’s perspective:
 - The cube’s base face lies flat on the chessboard plane
 - Distant cube faces appear smaller (consistent with perspective projection).
