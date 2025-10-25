@@ -4,17 +4,13 @@ import numpy as np
 import matplotlib.pyplot as plt
 from glob import glob
 
-# -------------------------- 1. Configuration and Parameter Settings --------------------------
-chessboard_size = (11, 8)  # Number of inner corners (columns, rows)
-square_size = 14.5  # Size of each chessboard square (mm)
-image_dir = "../Data/images"  # Path to stored images
-output_dir = "Calibration_Results"  # Path to save results
+chessboard_size = (11, 8)  # (columns, rows)
+square_size = 14.5  
+image_dir = "../Data/images" 
+output_dir = "Calibration_Results"  
 os.makedirs(output_dir, exist_ok=True)
 
-
-# -------------------------- 2. Image Loading and Corner Detection --------------------------
 def load_images_and_detect_corners(image_dir, chessboard_size):
-    """Load images and detect inner corners of the chessboard"""
     image_paths = glob(os.path.join(image_dir, "*.bmp"))
     if not image_paths:
         raise ValueError(f"No bmp images found in {image_dir}, please check the path")
@@ -54,10 +50,7 @@ def load_images_and_detect_corners(image_dir, chessboard_size):
         raise Warning("Fewer than 5 valid images, calibration may be unreliable")
     return images, obj_points, img_points, valid_indices, image_paths
 
-
-# -------------------------- 3. Camera Calibration Calculation --------------------------
 def calibrate_camera(obj_points, img_points, image_shape):
-    """Calibrate the camera and return parameters"""
     ret, mtx, dist, rvecs, tvecs = cv2.calibrateCamera(
         obj_points, img_points, image_shape[::-1], None, None
     )
@@ -78,89 +71,69 @@ def calibrate_camera(obj_points, img_points, image_shape):
     )
     return mtx, dist, rvecs, tvecs, mean_error
 
-
-# -------------------------- 4. Updated: Project Colored Cube to Image (AR Function) --------------------------
 def project_cube_to_image(images, valid_indices, mtx, dist, rvecs, tvecs):
-    """Project a 3D cube with 6 different colored faces onto the image"""
-    # 1. Define 3D cube vertices (fixed order: bottom face first, then top face)
-    # Bottom face: (0,0,0) → (2,0,0) → (2,2,0) → (0,2,0) (Z=0)
-    # Top face:    (0,0,2) → (2,0,2) → (2,2,2) → (0,2,2) (Z=2, edge length = 2*square_size)
-    cube_size = square_size * 2  # Double the chessboard square size for a larger cube
+    cube_size = square_size * 2  
     cube_3d = np.array([
-        # Bottom face vertices (Z=0)
         [0, 0, 0], [cube_size, 0, 0], [cube_size, cube_size, 0], [0, cube_size, 0],
-        # Top face vertices (Z=cube_size)
         [0, 0, cube_size], [cube_size, 0, cube_size], [cube_size, cube_size, cube_size], [0, cube_size, cube_size]
     ], dtype=np.float32)
     
-    # 2. Define 6 cube faces: each face = [list of vertex indices] + [BGR color]
-    # Order: Bottom → Top → Front → Back → Left → Right (6 faces, 6 colors)
+    #  6 cube faces and  they are defined as different colors to check whether the project is right
     cube_faces = [
-        ([0, 1, 2, 3], (255, 0, 0)),    # Bottom face: Blue
-        ([4, 5, 6, 7], (0, 255, 0)),    # Top face: Green
-        ([0, 1, 5, 4], (0, 0, 255)),    # Front face: Red
-        ([2, 3, 7, 6], (255, 255, 0)),  # Back face: Yellow
-        ([0, 3, 7, 4], (255, 0, 255)),  # Left face: Magenta
-        ([1, 2, 6, 5], (0, 255, 255))   # Right face: Cyan
+        ([0, 1, 2, 3], (255, 0, 0)),   
+        ([4, 5, 6, 7], (0, 255, 0)),    
+        ([0, 1, 5, 4], (0, 0, 255)),   
+        ([2, 3, 7, 6], (255, 255, 0)), 
+        ([0, 3, 7, 4], (255, 0, 255)),  
+        ([1, 2, 6, 5], (0, 255, 255))   
     ]
     
-    # 3. Define cube edges (for outline, make edges thicker than faces)
     cube_edges = [
-        (0, 1), (1, 2), (2, 3), (3, 0),  # Bottom face edges
-        (4, 5), (5, 6), (6, 7), (7, 4),  # Top face edges
-        (0, 4), (1, 5), (2, 6), (3, 7)   # Vertical edges (connect bottom-top)
+        (0, 1), (1, 2), (2, 3), (3, 0), 
+        (4, 5), (5, 6), (6, 7), (7, 4),  
+        (0, 4), (1, 5), (2, 6), (3, 7)   
     ]
     
-    # 4. Project cube to 3 valid images
+    # Project cube
     for i in range(min(3, len(valid_indices))):
         img_idx = valid_indices[i]
         img = images[img_idx].copy()
-        rvec = rvecs[i]  # Rotation vector of current image
-        tvec = tvecs[i]  # Translation vector of current image
-        
-        # Step 1: Undistort the image (match previous logic)
+        rvec = rvecs[i]  
+        tvec = tvecs[i] 
+        # Undistort the image 
         h, w = img.shape[:2]
         newcameramtx, roi = cv2.getOptimalNewCameraMatrix(mtx, dist, (w, h), 1, (w, h))
         undistorted_img = cv2.undistort(img, mtx, dist, None, newcameramtx)
         x_roi, y_roi, w_roi, h_roi = roi
         undistorted_img = undistorted_img[y_roi:y_roi+h_roi, x_roi:x_roi+w_roi]
         
-        # Step 2: Project 3D cube vertices to 2D pixel coordinates
+        # Project 3D cube vertices to 2D pixel coordinates
         cube_2d, _ = cv2.projectPoints(cube_3d, rvec, tvec, mtx, dist)
-        cube_2d = cube_2d.reshape(-1, 2).astype(int)  # Convert to (8,2) integer pixel coordinates
+        cube_2d = cube_2d.reshape(-1, 2).astype(int)  
         
-        # Step 3: Adjust 2D coordinates to match undistorted image (crop offset)
-        cube_2d[:, 0] -= x_roi  # Subtract X offset of ROI
-        cube_2d[:, 1] -= y_roi  # Subtract Y offset of ROI
+        cube_2d[:, 0] -= x_roi  
+        cube_2d[:, 1] -= y_roi  
         
-        # Step 4: Fill each face with its color (transparency: 0.5 for better overlay)
-        # Create a "color layer" to blend with undistorted image (avoid overwriting)
         color_layer = undistorted_img.copy()
         for face_vertices_idx, face_color in cube_faces:
-            # Get 2D coordinates of the current face's vertices
-            face_2d = cube_2d[face_vertices_idx].reshape(1, -1, 2)  # Format: (1,4,2) for fillConvexPoly
-            # Fill the face with color (thickness=-1 means fill)
+            face_2d = cube_2d[face_vertices_idx].reshape(1, -1, 2)  
             cv2.fillConvexPoly(color_layer, face_2d, face_color)
         
-        # Blend color layer with undistorted image (alpha=0.5: 50% face color, 50% original image)
         undistorted_with_faces = cv2.addWeighted(color_layer, 0.5, undistorted_img, 0.5, 0)
         
-        # Step 5: Draw cube edges (white color, thick line) to highlight outline
         for (p1_idx, p2_idx) in cube_edges:
             p1 = tuple(cube_2d[p1_idx])
             p2 = tuple(cube_2d[p2_idx])
             cv2.line(undistorted_with_faces, p1, p2, (255, 255, 255), 2)  # White edge, 2px thick
         
-        # Step 6: Save the final image with colored cube
+        # Save the final image
         save_path = os.path.join(output_dir, f"undistorted_with_colored_cube_{i}.png")
         cv2.imwrite(save_path, undistorted_with_faces)
         print(f"Image with colored cube saved: {save_path}")
 
 
-# -------------------------- 5. Result Visualization --------------------------
 def visualize_results(images, valid_indices, mtx, dist, image_paths, rvecs, tvecs):
-    """Original visualization + colored cube projection"""
-    # 1. Chessboard visualization
+    # Chessboard visualization
     first_valid_idx = valid_indices[0]
     chessboard_vis = images[first_valid_idx].copy()
     cv2.putText(
@@ -169,7 +142,7 @@ def visualize_results(images, valid_indices, mtx, dist, image_paths, rvecs, tvec
     )
     cv2.imwrite(os.path.join(output_dir, "chessboard_visualization.png"), chessboard_vis)
     
-    # 2. Camera positions visualization
+    # Camera positions visualization
     num_vis = min(5, len(valid_indices))
     vis_indices = np.linspace(0, len(valid_indices)-1, num_vis, dtype=int)
     vis_images = [images[valid_indices[i]] for i in vis_indices]
@@ -181,7 +154,7 @@ def visualize_results(images, valid_indices, mtx, dist, image_paths, rvecs, tvec
     )
     cv2.imwrite(os.path.join(output_dir, "camera_positions_visualization.png"), stitched_img)
     
-    # 3. Original vs undistorted comparison
+    # Original vs undistorted comparison
     for i in range(min(3, len(valid_indices))):
         idx = valid_indices[i]
         img = images[idx]
@@ -200,27 +173,25 @@ def visualize_results(images, valid_indices, mtx, dist, image_paths, rvecs, tvec
         comparison_img = np.vstack([img_resized, undistorted_resized])
         cv2.imwrite(os.path.join(output_dir, f"original_vs_undistorted_{i}.png"), comparison_img)
     
-    # 4. Project colored cube to image
     project_cube_to_image(images, valid_indices, mtx, dist, rvecs, tvecs)
     print("\nAll visualizations completed (including colored cube)")
 
 
-# -------------------------- Main Function --------------------------
 if __name__ == "__main__":
     try:
-        # Step 1: Load images and detect corners
+        # Load images and detect corners
         images, obj_points, img_points, valid_indices, img_paths = load_images_and_detect_corners(
             image_dir, chessboard_size
         )
         
-        # Step 2: Camera calibration
+        # Camera calibration
         if valid_indices:
             image_shape = images[0].shape[:2]
             mtx, dist, rvecs, tvecs, mean_error = calibrate_camera(
                 obj_points, img_points, image_shape
             )
             
-            # Step 3: Visualization (including colored cube)
+            # Visualization (including colored cube)
             visualize_results(images, valid_indices, mtx, dist, img_paths, rvecs, tvecs)
             
             # Save calibration analysis
