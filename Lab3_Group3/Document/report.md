@@ -30,7 +30,7 @@ This section aims to complete two core tasks based on the previously finished si
 
 ##### Step 1: Load Calibration Data and Chessboard Points
 1. Call the `load_calibration_data()` function to read the `calibration_params.npz` file, extracting the intrinsic matrix `mtx`, distortion coefficients `dist`, rotation vectors `rvecs`, and translation vectors `tvecs`. This function automatically checks for the existence of the calibration file and raises a `FileNotFoundError` if the file is missing.  
-2. Call the `get_chessboard_points()` function to generate chessboard world coordinates: a 54×3 array (corresponding to `9×6` corners) with Z-coordinate = 0 and 20 mm spacing between XY coordinates.  
+2. Call the `get_chessboard_points()` function to generate chessboard world coordinates: a 88×3 array (corresponding to `11×8` corners) with Z-coordinate = 0 and 20 mm spacing between XY coordinates.  
 
 
 ##### Step 2: Correct Camera Pose and Construct Models
