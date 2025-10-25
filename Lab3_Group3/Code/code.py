@@ -5,8 +5,8 @@ import matplotlib.pyplot as plt
 from glob import glob
 
 # -------------------------- 1. Configuration and Parameter Settings --------------------------
-chessboard_size = (9, 6)  # Number of inner corners (columns, rows)
-square_size = 20  # Size of each chessboard square (mm)
+chessboard_size = (11, 8)  # Number of inner corners (columns, rows)
+square_size = 14.5  # Size of each chessboard square (mm)
 image_dir = "../Data/images"  # Path to stored images
 output_dir = "Calibration_Results"  # Path to save results
 os.makedirs(output_dir, exist_ok=True)
