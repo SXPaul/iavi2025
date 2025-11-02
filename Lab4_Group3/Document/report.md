@@ -24,6 +24,9 @@ Then we use the tools of OpenCV `cv2.stereoCalibrate` to complete the stereo cal
 
 #### 1.2.2 Dense depth map 3D point cloud computing (based on triangulation)
 
+# TODO:这里我只写了怎么用OPENCV 做的，需要补充三角化计算
+# 可以先说我们用三角化方法进行了计算，然后用如下的OpenCV的方法进行了计算。
+
 We used the camera calibration parameters calculated in Step One and the function tools of OpenCV `cv2.stereoRectify` to calculate the rotation matrix, projection matrix and parallax to depth mapping matrix required for computational correction.
 
 After that,we use `cv2.remap` to reactify the images and transform the result to grey-scale image for computing 3D cloud.
@@ -31,18 +34,21 @@ After that,we use `cv2.remap` to reactify the images and transform the result to
 
 
 #### 1.2.3 Solve the color differences between perspectives and generate 3D point clouds with colors
+
 `cv2.reprojectImageTo3D` is uesd to solve the 3D point,and the Semi-Global Block Matching (SGBM) algorithm was used for dense disparity estimation. And we explored the influence of different values of some parameters(numDisparities,bloackSize) on the results
 Key parameters included:
 - numDisparities = 128 (range of disparity values, divisible by 16).
 - blockSize = [3, 5, 7] (matching window size, tested for impact on quality).
 - Smoothing parameters: P1 = 8 * 3 * blockSize², P2 = 32 * 3 * blockSize²
 
-# TODO:
+# TODO:这里说明一下矫正色差的方法，如果调了函数，写一下参数
 We use **** to solve the color differences between perspectives.
 Parameters are  as follow:
-**这里填充一下**
 
 
+
+
+We also explored the relationship between point cloud quality and color difference correction.The results are given in 1.3.3
 
 That's all of the pipeline.We used this method to conduct deep modeling of two objects(chessboard and a dragon toy).
 
@@ -54,7 +60,7 @@ The parameters of each camera are as follows:
 Stereo calibration results are as follows:
 ![alt text](Imgs/goal1/image2.png)
 
-#### 1.2.2 Dense depth map 3D point cloud computing
+#### 1.3.2 Dense depth map 3D point cloud computing
 1. parallax to depth mapping matrix 
 ![alt text](Imgs/goal2/image1.png)
 
@@ -73,7 +79,9 @@ Stereo calibration results are as follows:
 4. SGBM disparity map image of different blockSize
 ![alt text](Imgs/goal2/image2.png)
 
-#### 1.2.3 Colored 3D Point Cloud
+#### 1.3.3 Colored 3D Point Cloud
+
+##### 3D cloud point without resolving the color discrepancy 
 
 1. Colored 3D Point Cloud in matplotlib.pyplot
 - chessboard
@@ -86,6 +94,16 @@ Stereo calibration results are as follows:
 ![alt text](Imgs/goal3/meshlib_chess.jpg)
 - dragon toy
 ![alt text](Imgs/goal3/toy.png)
+
+# TODO :在这里粘贴上色差矫正过后的3d点云图片
+##### 3D cloud point resolving the color discrepancy 
+- chessboard
+  
+
+- dragon toy
+
+# TODO：这里贴上用三角化做的3D点云的图片
+##### 3D cloud point computed via triangulation
 
 ### 1.4 Analysis and Discussion
 
@@ -102,6 +120,14 @@ We can see from the cloud point of chessboard that:
 - the parallel edges (such as the upper and lower borders of the window) remain parallel in 3D space; 
 - the right-angle structures present a 90-degree vertical relationship; 
 - the planar area (such as the board plane) is flat and free of obvious distortions
+
+
+# TODO :简单定性分析一下色差矫正的结果
+#### 1.4.3 Impact of resolving the color discrepancy 
+
+
+#### 1.4.4 Compute a dense depth map / 3D point cloud based on triangulation and OpenCV
+Comparing the point cloud graph calculated by the triangulation method with the point cloud obtained by directly calling the functions of OpenCV,the results were basically the same.We studied the functions related to OpenCV and found that they were actually implemented using the triangulation method.
 
 
 ### 1.5 Conclusion
