@@ -1,7 +1,0 @@
-Analysis of factors affecting calibration quality:
-
-1. Number of images: 60 valid images (need >5)
-2. Coverage: Chessboard must cover image edges
-3. View angles: Multiple angles improve robustness
-4. Other factors: Chessboard accuracy, lighting, camera stability
-Mean reprojection error: 0.1083 pixels (<1 is good)
