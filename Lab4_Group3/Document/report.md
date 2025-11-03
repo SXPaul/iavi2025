@@ -100,7 +100,7 @@ Stereo calibration results are as follows:
 - chessboard
   
 
-- dragon toy
+- dragon toyaa
 
 # TODO：这里贴上用三角化做的3D点云的图片
 ##### 3D cloud point computed via triangulation
