@@ -53,9 +53,26 @@ This software/script can calibrate the system automatically and print out the re
 
 ### 2.3. Establish the correspondences between camera pixels and projector pixels
 
+During the stereo calibration, we firstly identified the positions of the inner corners of the chessboard. For each corner, we can get its sub-pixel level coordinates $(u_cam, v_cam)$ on the camera image. Via the gray code, we can also get the corresponding positions $(u_proj, v_proj)$ on the projector image. Thus, just like stereo vision with two cameras, we can calculate the rotation matrix $R$ and the translation vector $T$. This process is achieved automatically by the software.
+
+![](./src/local-homographies.png)
+
+> This graph is from D. Moreno and G. Taubin, "Simple, Accurate, and Robust Projector-Camera Calibration," School of Engineering, Brown University, Providence, RI, USA, 2018.
+
+### 2.4. Triangulate (Depth map & 3D point cloud)
+
+We set up a scene and project the same gray codes on it to get the image set. Using the gray codes, we can get the coordinates $(u_proj, v_proj)$ for each pixel on the image. Namely, we got the image "shot" by the projector. After that, we apply the distortion coefficient of the projector and the camera to correct the "two" images. And the following process is same as stereo vision with two cameras.
+
+Key function/code block is:
+<Saure>
+
 ## 3. Result and Data Processing
 
+<Saure>
+
 ## 4. Analysis and Discussion
+
+<Saure>
 
 ## 5. Conclusion
 
