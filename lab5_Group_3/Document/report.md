@@ -13,7 +13,6 @@ In privious lab 4, we already know that we can achieve the stereo vision with tw
 ### 1.2. Environment and Hardware
 
 The resolution of the projector: **1920x1080**.
-<Saure>
 
 ## 2. Projector-Camera-Based Stereo Vision
 
@@ -24,11 +23,6 @@ Because $1920 \lt 2^{11}$, $1080 \lt 2^{11}$, we need 11 vertical gray codes and
 $\mathbf{G}(i) = \mathbf{B}(i)$ for the highest bit
 $\mathbf{G}(i) = \mathbf{B}(i) \oplus \mathbf{B}(i+1)$ otherwise
 
-The key function/code block is:
-```python
-<Saure>
-```
-
 And here we display some of the generated gray codes.
 
 |![](./src/graycode/1.png)|![](./src/graycode/2.png)|![](./src/graycode/3.png)|
@@ -37,19 +31,9 @@ And here we display some of the generated gray codes.
 
 ### 2.2. Calibrate the Camera-Projector System
 
-We place the chessboard on the wall with different positions and angles, and then project the gray codes on the chessboard and take pictures.After the aquisition of the data, we got <Saure> sets of images and each set contains <Saure> images.
+We place the chessboard on the wall with different positions and angles, and then project the gray codes on the chessboard and take pictures.After the aquisition of the data, we got 3 sets of images and each set contains 44 images.
 
-We use the software from [http://mesh.brown.edu/calibration/](http://mesh.brown.edu/calibration/) to calibrate the system: 
-
-![](<Saure>)
-
-<Saure: altanating> Given that the software provided in the slides is too old to be used, we found a newer repository for camera-projector calibration in Github: [https://github.com/kamino410/procam-calibration](https://github.com/kamino410/procam-calibration)
-
-![](<Saure>)
-
-This software/script can calibrate the system automatically and print out the result:
-
-![](<Saure>)
+We use the software from [http://mesh.brown.edu/calibration/](http://mesh.brown.edu/calibration/) to calibrate the system.This software/script can calibrate the system automatically and print out the result.
 
 ### 2.3. Establish the correspondences between camera pixels and projector pixels
 
@@ -184,6 +168,8 @@ Our calibration results are excellent with small errors. However, our 3D reconst
 In addition, we found that our projector produces barely visible colorful fringes during projection. We tried several methods to mitigate these fringes, such as increasing the exposure level; however, this led to a new issue: during the acquisition of the lower bits of the gray code, the stripes—being excessively thin—became unrecognizable in the captured images. These colorful fringes may have affected the accuracy of our 3D reconstruction, resulting in unsatisfactory experimental results.
 
 ## 5. Conclusion
+
+In conclusion, our project varified that the single-camera stereo vision with a projector can be used to generate 3D point clouds. However, the results were not so satisfactory due to the limitations of the projector and the precision of the algorithm. From the point cloud, we can see how the light conditions of both the environment and the projector influence the 3D reconstruction, and we have explored more algorithms with camera-projector system. Intrestingly, we found that the quality of 3D point clouds appeared in the papers of the same topic are averagely lower than two-camera stereo vision. We attribute this to the insufficient calibration of the projector parameters. At the very least, we still have a long way to go in camera-projector system stereo vision.
 
 ## 6. References and Use of AI
 
