@@ -31,13 +31,27 @@ The key function/code block is:
 
 And here we display some of the generated gray codes.
 
-|<Saure>|<Saure>|<Saure>|
+|![](./src/graycode/1.png)|![](./src/graycode/2.png)|![](./src/graycode/3.png)|
 |:---:|:---:|:---:|
-|<Saure>|<Saure>|<Saure>|
+|![](./src/graycode/4.png)|![](./src/graycode/5.png)|![](./src/graycode/6.png)|
 
-### 2.2 Calibrate the Camera-Projector System
+### 2.2. Calibrate the Camera-Projector System
 
-<Saure>
+We place the chessboard on the wall with different positions and angles, and then project the gray codes on the chessboard and take pictures.After the aquisition of the data, we got <Saure> sets of images and each set contains <Saure> images.
+
+We use the software from [http://mesh.brown.edu/calibration/](http://mesh.brown.edu/calibration/) to calibrate the system: 
+
+![](<Saure>)
+
+<Saure: altanating> Given that the software provided in the slides is too old to be used, we found a newer repository for camera-projector calibration in Github: [https://github.com/kamino410/procam-calibration](https://github.com/kamino410/procam-calibration)
+
+![](<Saure>)
+
+This software/script can calibrate the system automatically and print out the result:
+
+![](<Saure>)
+
+### 2.3. Establish the correspondences between camera pixels and projector pixels
 
 ## 3. Result and Data Processing
 
