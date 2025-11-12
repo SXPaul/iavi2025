@@ -2,6 +2,10 @@
 
 ## 1. Introduction
 
+3D reconstruction from images is fundamental in many applications, such as cultural heritage digitalization, industrial reverse engineering, and AR/VR. However, the current 3D reconstruction still has many limitations. The professional 3D reconstruction often requires expensive equipment and time. While in most similar student projects, the images always has no data for the camera poses, which means the algorithm needs to predict the camera poses. Meanwhile, although the NeRF has been used in this field, most of the usage convert a target immediately to an another 2D image (often real-time and from a new angle), don't improve the quality of the reconstruction (3D model).
+
+In this project, we have built a shooting system for 3D point cloud reconstruction, which is compatible with the state-of-art CV technology VGGT, and it porformed well.
+
 ## 2. Setup & Environment
 
 ### 2.0. Environment Requirements
@@ -290,14 +294,33 @@ The images of the generated sparse point cloud and dense point cloud are as foll
 
 ### 4.2 VGGT reconstruction results
 
+The images of the 3D reconstruction point cloud are as follows:
+![](./Img/real.png)![](./Img/demo_1.gif)![](./Img/demo_2.gif)
 
-## 5. References & Acknowledgements
+## 5. Extension: Panoramic Reconstruction
 
-### 5.2 the reference website of COLMAP script 
+In the experiment, we also improved our equipment by placing the industrial camera at the center of the turntable, thereby achieving 3D reconstruction of large scenes—such as our dormitory. The following are our experimental results:
+
+![](./Img/demo_5.gif)
+
+![](./Img/demo_room.gif)
+
+It can be seen that the results are extremely detailed; even objects such as Saure's computer and other roommates' water cups are clearly visible.
+
+## 6. References & Acknowledgements
+ 
 Reference Websites:
 1. [COLMAP Installation and 3D Point Cloud Reconstruction Full Process Explanation: From Installation Configuration to Model Viewing](https://blog.csdn.net/qq_22841387/article/details/144797649)
 2. [COLMAP Quick Tutorial (Command-Line Mode)](https://www.cnblogs.com/phillee/p/14335034.html)
 3. [Traditional 3D Reconstruction Practice with Colmap (GUI | Command-Line)](https://zhuanlan.zhihu.com/p/362701018)
 4. [COLMAP | Command-Line Operations](https://zhuanlan.zhihu.com/p/1913700966622004956)
-5. [doubao](https://www.doubao.com/thread/wa1c990144e059204)
-6. [VGGT](https://github.com/facebookresearch/vggt)
+5. [VGGT](https://github.com/facebookresearch/vggt)
+
+Artificial Intelligence helped in this project:
+Cursor		for understanding VGGT
+Chat-GPT   	for providing ICP algorithm
+Github CoPilot	for generating some repeated code
+[doubao](https://www.doubao.com/thread/wa1c990144e059204)		for debugging the .bat file
+
+Reference essays:
+Wang, J., Chen, M., Karaev, N., Vedaldi, A., Rupprecht, C., & Novotny, D. (2025). VGGT: Visual Geometry Grounded Transformer. Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR), 5294–5306.
