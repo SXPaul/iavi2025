@@ -54,11 +54,131 @@ Since using self-tapping screws directly would cause the wood to crack and get d
 ##### Software environment
 
 ### 2.2. Classic Workflow with COLMAP
+#### 2.2.1 COLMAP Reconstruction Principles and Steps
+1. SIFT Algorithm (Scale-Invariant Feature Transform)
+   - Function: Detect stable feature points from a single image, generate descriptors, provide a basis for feature matching between different images, and serve as the foundation for 3D reconstruction.
+   - Principle:
+     - Construct a multi-scale Gaussian pyramid to simulate different viewing distances;
+     - Find stable feature points in the pyramid;
+     - Assign directions to feature points to make them unaffected by image rotation;
+     - Extract texture information around feature points to generate descriptors.
 
+2. RANSAC Algorithm (Random Sample Consensus)
+   - Function: Screen out reliable matching points and eliminate incorrect matches to avoid affecting subsequent reconstruction accuracy.
+   - Principle:
+     - Randomly select a small number of sample points and fit an initial geometric model;
+     - Calculate the error of all data relative to the model and filter out reliable points that meet the requirements;
+     - Repeat sampling and fitting, and select the model with the most reliable points as the optimal result.
+
+3. SfM Algorithm (Structure from Motion)
+   - Function: Calculate the camera's position/orientation and 3D point coordinates simultaneously without prior knowledge of camera parameters or scene information, completing the core transformation from 2D images to sparse 3D reconstruction.
+   - Principle:
+     - Select image pairs with the most matching points, calculate the relative camera position, and obtain initial 3D points;
+     - Add new images one by one, determine the new camera position based on existing 3D points, and generate new 3D points;
+     - Optimize camera positions and 3D point coordinates to reduce errors;
+     - Eliminate invalid data with excessive errors.
+
+4. Undistortion Algorithm
+   - Function: Correct imaging distortion of the camera lens and generate undistorted images, providing clear input for dense reconstruction.
+   - Principle:
+     - Use distortion coefficients obtained from sparse reconstruction to reversely calculate undistorted pixel positions;
+     - Fill pixel values through interpolation to generate undistorted images, and organize camera parameters simultaneously.
+
+5. Dense Reconstruction Algorithm (PatchMatch Stereo, PMS)
+   - Function: Estimate depth for each pixel in undistorted images, generate dense depth maps, and fill in the detail gaps of sparse point clouds.
+   - Principle:
+     - Determine the depth search range for pixels based on sparse point clouds;
+     - Randomly assign initial depth values to each pixel;
+     - Iteratively optimize to obtain the optimal depth by referring to the depth of adjacent pixels and other perspectives;
+     - Eliminate inconsistent incorrect depths and filter noise.
+
+6. Stereo Fusion Algorithm
+   - Function: Merge depth maps from all perspectives to generate a complete and reliable dense 3D point cloud.
+   - Principle:
+     - Convert pixels of each depth map into 3D points using camera parameters;
+     - Retain 3D points consistent across multiple perspectives, and eliminate abnormal and duplicate points;
+     - Merge all reliable 3D points to form a global dense point cloud.
+
+7. Surface Reconstruction Algorithm (Poisson Reconstruction)
+   - Function: Generate a smooth 3D surface mesh from a dense point cloud, forming a directly usable 3D model.
+   - Principle:
+     - Calculate the normal vectors of the dense point cloud and unify their directions;
+     - Use mathematical methods to fit the surface of the point cloud;
+     - Extract the fitted surface to generate a 3D mesh model.
+
+#### 2.2.2 Core Program
+##### 2.2.2.1 Shooting Program
+- Usage of Core Function Interfaces
+  Two hardware control function interfaces are mainly used to achieve angle adjustment:
+  1. rotateFrame(angle): Drives the 2nd and 3rd servos to rotate synchronously in opposite directions, precisely controlling the rotation of the camera frame;
+  2. rotatePlat(duration): Drives the 1st motor to achieve the rotation of the shooting platform by controlling the rotation duration.
+
+- Shooting Logic Flow
+  1. Initialization: Connect and configure the Basler camera, and start image acquisition; initialize serial communication, reset the frame to 0° and stabilize for 1 second.
+  2. Shooting Cycle (Frame First, Then Platform):
+     - The outer loop iterates over `PLAT_COUNT` platform positions (evenly divided over 360°), and the inner loop iterates over `FRAME_COUNT` frame positions (evenly divided over 90°);
+     - Fix the platform position, sequentially rotate the frame to each preset angle via rotateFrame(), and capture one image per rotation;
+     - After completing the shooting of all frame angles for one platform position, rotate the platform to the next position via rotatePlat(), reset the frame, and enter the next round of shooting.
+```python
+for i in range(PLAT_COUNT):
+    # Calculate current platform angle (evenly divided over 360°)
+    plat_angle = i * 360 / PLAT_COUNT
+    for j in range (FRAME_COUNT):
+        # Calculate current and next frame angles (evenly divided over 90°)
+        frame_angle = j * 90 / FRAME_COUNT
+        next_frame_angle = (j + 1) * 90 / FRAME_COUNT
+        
+        # Capture image at current (platform-frame) angle combination
+        time.sleep(0.5)  # Stabilization delay
+        take_photo(camera, save_dir, plat_angle, frame_angle)  # Save image with angle labels
+        time.sleep(0.5)
+        
+        # Rotate frame to next position for next shot (×5 for hardware protocol adaptation)
+        rotateFrame(int(next_frame_angle * 5))
+        time.sleep(0.5)
+    
+    # After all frame angles are shot for current platform position:
+    time.sleep(0.5)
+    rotatePlat(1 / PLAT_COUNT)  # Rotate platform to next position (duration = 1/7s)
+    rotateFrame(0)  # Reset frame to initial position
+    time.sleep(1.5)  # Longer stabilization delay for platform
+```
+  3. Supplementary Shooting (optional): After completing all combined shootings, capture an additional image with the "frame at 90°".
+
+- Reason for Choosing the Shooting Logic
+  The core reason for choosing the logic of "rotating only the frame (rotateFrame) for a single photo and rotating the platform (rotatePlat) after completing the shooting of a set of frame angles" is the optimization of shooting quality and subsequent reconstruction results caused by differences in equipment precision:
+  - Precision Difference: rotateFrame() is controlled by servos with accurate angle mapping, enabling it to stably stay at the preset target position with high repeatability and accuracy of frame angles; while rotatePlat() controls the rotation angle through motor duration, which cannot accurately stay at the preset position due to the influence of motor speed stability, mechanical transmission errors, etc., resulting in large angle deviations;
+
+
+##### 2.2.2.2 Reconstruction Script
+
+This script implements automated 3D reconstruction based on COLMAP's command-line mode, connecting to the multi-angle images output by the shooting program and completing end-to-end processing following the standard reconstruction workflow:
+1. Automatically configures the image input path, database path, and result output path, while verifying the validity of the COLMAP executable file;
+2. Initializes the workspace and cleans up historical files to avoid conflicts;
+3. Sequentially executes 7 core steps: feature extraction, feature matching, sparse reconstruction, image undistortion, dense reconstruction (PatchMatch Stereo), stereo fusion, and surface meshing;
+4. Finally outputs the sparse point cloud, dense point cloud (`fused.ply`), and surface mesh model (`meshed-poisson.ply`), and prompts the result storage paths.
+
+The script requires no manual intervention throughout the process, strictly follows COLMAP's standard reconstruction workflow, is compatible with the images captured earlier, and can directly realize the automated conversion from images to 3D models.
 ### 2.3. Works on VGGT
 
 ## 3. Analysis and Discussion
 
+### 3.2 Optimizing COLMAP Reconstruction by Adjusting Shooting Modes
+I forgot to save the images of the poorly generated sparse point cloud, so I cannot provide comparison charts here. The original (unoptimized) method involves first rotating the bottom platform and then rotating the frame to take photos — this leads to obvious platform position deviation under the same frame angle, large jumps in photo perspectives, and increased difficulty in feature point matching between images. Consequently, the camera positions in the generated sparse point cloud are very scattered and irregular, and the outline and number of valid points of the point cloud images are far inferior to those from the optimized method. In contrast, the optimized approach fixes the platform position first and completes multi-angle shooting through precise frame rotation, which ensures continuous perspectives and accurate angles of images under the same platform position. This further enhances the correlation of feature points between photos, provides more reliable image data for subsequent 3D reconstruction, and ultimately improves the precision and integrity of the reconstruction results.
+
 ## 4. Conclusion
 
+### 4.2 colmap reconstruction results
+
+The images of the generated sparse point cloud and dense point cloud are as follows:
+![sparse](Img/sparse.png)  ![dense](Img/dense.png)
+
+
 ## 5. References & Acknowledgements
+
+### 5.2 the reference website of COLMAP script 
+Reference Websites:
+1. [COLMAP Installation and 3D Point Cloud Reconstruction Full Process Explanation: From Installation Configuration to Model Viewing](https://blog.csdn.net/qq_22841387/article/details/144797649)
+2. [COLMAP Quick Tutorial (Command-Line Mode)](https://www.cnblogs.com/phillee/p/14335034.html)
+3. [Traditional 3D Reconstruction Practice with Colmap (GUI | Command-Line)](https://zhuanlan.zhihu.com/p/362701018)
+4. [COLMAP | Command-Line Operations](https://zhuanlan.zhihu.com/p/1913700966622004956)
