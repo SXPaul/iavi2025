@@ -95,7 +95,7 @@ The student responsible for building the hardware platform provided three operat
     ```
 
 The above are all the software and hardware interfaces.**When using this interface to control hardware, the following workflow must be followed:**
-![alt text](image-1.png)
+![alt text](img/image-1.png)
 You can refer to `hardware_example.py`.
 
 ### 2.2. Classic Workflow with COLMAP
