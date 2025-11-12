@@ -300,3 +300,4 @@ Reference Websites:
 3. [Traditional 3D Reconstruction Practice with Colmap (GUI | Command-Line)](https://zhuanlan.zhihu.com/p/362701018)
 4. [COLMAP | Command-Line Operations](https://zhuanlan.zhihu.com/p/1913700966622004956)
 5. [doubao](https://www.doubao.com/thread/wa1c990144e059204)
+6. [VGGT](https://github.com/facebookresearch/vggt)
