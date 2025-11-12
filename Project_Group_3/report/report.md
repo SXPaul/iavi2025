@@ -46,12 +46,57 @@ Since using self-tapping screws directly would cause the wood to crack and get d
 
 ![alt text](img/89a0d2211c6eed5349f082a57863b188.jpg)
 
-##### Motion control module
+##### Motion Control Module
 - Drive unit: [SC15 servo](https://www.waveshare.net/wiki/SC15_Servo#.E5.BC.80.E6.BA.90.E9.A1.B9.E7.9B.AE)
     ![alt text](img/6b6116b1cce821e19f7eb3f0c4e99630.jpg)
 - Control board: [Bus Servo Adapter (A)](https://www.waveshare.net/wiki/Bus_Servo_Adapter_(A))
     ![alt text](img/image1.png)
-##### Software environment
+#### 2.1.3 Hardware Software Interface
+Our hrdware control program is secondary eveloped based on the scservo_sdk , this driver package provides some basic command methods for interacting with hardware. It is a driver package specifically developed for hardware under the sc protocol.And `pyserial ==3.5` is needed.
+
+The student responsible for building the hardware platform provided three operation interfaces and sample programs `hardware_example.py` to the student in charge of software modeling based on this package.
+
+- rotatePlat
+    This function is used to control the rotating platform to rotate at a certain speed for a certain period of time.**In fact, such an implementation is a trade-off because the servo of this model only supports precise rotation within 180 degrees when driven by a servo**.Therefore, we have to use its motor mode. After controlling the speed and time and conducting some related data tests, we provide such an interface.
+    ```python
+    def rotatePlat(duration=RUN_TIME,v=MOTOR_V):
+    """Function to operate the plat.
+    Attention!!!The unit of duratioin is second!!!
+    Args:
+        duration (int, optional): give the duratino time that you want the motor rotate for.
+        Defaults to RUN_TIME.
+        v (int, optional): give the speed of motor you want the motor to rotate at. Defaults to MOTOR_V.
+    """
+    ```
+
+- rotateFrame
+    Since the two servos are placed facing each other and rotate in opposite directions when setting up the hardware, the function implementation requires passing in the corresponding positions, then function  controlls the left and right rocker arms to add(left) or subtract(right) the corresponding position values based on the initial values.Based on this implementation idea, **we measured the initial attitude of the servo multiple times when building the hardware to enable the robotic arm to rotate at the maximum Angle.**
+    
+    To achieve synchronized operation of the two servos, we use the servo's writeReg —— write the position into the register, and then make the servo rotate synchronously through the broadcast signal.
+    ```python
+    def rotateFrame(angle=0):
+    """Function to operate the robot arm that fix the camera
+    Args:
+        angle (int, optional):Position of the robot arm.A integer of [0,600] ,
+                    where 0 denote the robot arm is parallel to the horizontal plane.
+                    The larger the number, the higher the robot arm's position. 
+                    400 indicates a vertical position to the ground
+                    Defaults to 0.
+    """
+    ```
+- takePhoto
+    A function used to control the camera to take pictures and store the photos at the designated location
+    ```python
+    def take_photo(camera, save_dir, plat_angle, frame_angle):
+    """
+    This function is to take photo with the passed-in camera
+    and save photo in save_dir named with plat angle and frame angle
+    """
+    ```
+
+The above are all the software and hardware interfaces.**When using this interface to control hardware, the following workflow must be followed:**
+![alt text](image-1.png)
+You can refer to `hardware_example.py`.
 
 ### 2.2. Classic Workflow with COLMAP
 #### 2.2.1 COLMAP Reconstruction Principles and Steps
