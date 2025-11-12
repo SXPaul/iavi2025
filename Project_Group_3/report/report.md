@@ -206,17 +206,89 @@ This script implements automated 3D reconstruction based on COLMAP's command-lin
 The script requires no manual intervention throughout the process, strictly follows COLMAP's standard reconstruction workflow, is compatible with the images captured earlier, and can directly realize the automated conversion from images to 3D models.
 ### 2.3. Works on VGGT
 
+#### 2.3.1 Architecture & Shooting Patterns
+
+**Architecture**
+VGGT (Visual Geometry Grounded Transformer) is a feed-forward neural network that directly infers all key 3D attributes of a scene, including camera parameters, point maps, depth maps, and 3D point tracks, from one, a few, or hundreds of its views, which is CVPR25's best paper. The architecture is as follows:
+
+![VGGT](./Img/archi.png)
+
+To begin with, the input image would be cut to small pieces by DINO and modified by the camera token. After that, the images would experience the **Alternating Attention** mechanism, with many global attention layers and frame attention layers alternating for many times. This process ensures that the transformer can learn both the global details and the single-frame details of the scene. Finally the output of the transformer would be used in different tasks. What's more, the architecture does not employ any cross-attention layers, only self-attention ones.
+
+**Shooting Patterns**
+When working with VGGT, the shooting pattern is as follows:
+
+![VGGT](./Img/pattern.jpg)
+
+As for why we choose this pattern but not shooting images with a circle track in different heights, we will discuss in the next section.
+
+#### 2.3.2 Use of VGGT
+
+The key functions are shown below:
+```python
+dtype = torch.bfloat16 if torch.cuda.get_device_capability()[0] >= 8 else torch.float16
+
+model = VGGT.from_pretrained("facebook/VGGT-1B").to(device)
+...
+    with torch.no_grad():
+        with torch.cuda.amp.autocast(dtype=dtype):
+            predictions = model(images)
+...
+    wp = predictions["world_points"].detach().float()
+    wp_conf = predictions["world_points_conf"].detach().float()
+    imgs = batch_images.detach().float().clamp(0, 1)
+    
+    all_wp.append(wp)
+    all_wp_conf.append(wp_conf)
+    all_imgs.append(imgs)
+```
+
+The model `VGGT-1B` would take up to 6.0 GB GPU memory, and my PC has 16 GB GPU memory, so in this project we can process up to 25 images at a time, which is already quite enough.
+
 ## 3. Analysis and Discussion
 
-### 3.2 Optimizing COLMAP Reconstruction by Adjusting Shooting Modes
+### 3.1 Optimizing COLMAP Reconstruction by Adjusting Shooting Modes
 I forgot to save the images of the poorly generated sparse point cloud, so I cannot provide comparison charts here. The original (unoptimized) method involves first rotating the bottom platform and then rotating the frame to take photos — this leads to obvious platform position deviation under the same frame angle, large jumps in photo perspectives, and increased difficulty in feature point matching between images. Consequently, the camera positions in the generated sparse point cloud are very scattered and irregular, and the outline and number of valid points of the point cloud images are far inferior to those from the optimized method. In contrast, the optimized approach fixes the platform position first and completes multi-angle shooting through precise frame rotation, which ensures continuous perspectives and accurate angles of images under the same platform position. This further enhances the correlation of feature points between photos, provides more reliable image data for subsequent 3D reconstruction, and ultimately improves the precision and integrity of the reconstruction results.
+
+### 3.2 VGGT: Some Discussions
+
+#### 3.2.1 The pattern of the shooting
+
+The key mechanism of the VGGT is the **Alternating Attention**, in which not only the object, the environment would also be considered in the attention mechanism. Thus, if we chose to shoot images with a circle track, though we can get the different aspects of the object, the relation between the object and the environment would be damaged. As a result, the 3D reconstruction point cloud would have many dark and bold cracks on the surface. To solve this problem, we chose to shoot images in a variety of heights and a small angle change.
+
+#### 3.2.2 The Factors Influencing the Quality of 3D Reconstruction
+
+##### 3.2.2.1 Dose inference by batches help? No!
+
+The first natural thought that we can devide the frames into batches to avoid the memory limitation. The experiment result is as follows:
+
+|batches|1|2|5|2_ICP|
+|:---:|:---:|:---:|:---:|:---:|
+|output .ply|![](./Img/1.png)|![](./Img/2.png)|![](./Img/5.png)|![](./Img/2_ICP.png)|
+
+As can be seen from the table, the number of ghosting artifacts in the results is exactly equal to the number of batches used for inference. This is because the world coordinates in the inference results of VGGT are always estimated based on the current set of images. When directly stitching point clouds from different batches, ghosting artifacts are unavoidable due to the inconsistency of world coordinates.
+
+##### 3.2.2.2 Does ICP algorithm help? Rarely...
+
+Since the issue of inconsistent world coordinates exists, another question is whether different world coordinates can be unified into a single environment. Through Chat-GPT, we learned about the ICP algorithm (the principle will not be repeated here). However, as shown in the result corresponding to "2_ICP" in the figure above, the ICP algorithm can only converge different ghosting artifacts onto a single plane, but is unable to solve the problem of overall offset of the point cloud. In subsequent communications with Group 8 (who also researched the ghosting issue and designed their own method, though it is not a general solution), we confirmed that there is currently no effective solution to this problem.
+
+##### 3.2.2.3 Does more attentions help? Rarely...
+
+Another natural idea is: if batch-wise processing doesn't work, can we obtain a more detailed point cloud by having the model attend to the same set of frames multiple times? In the experiment, we selected the same group of photos (Saure's desk) and had the model perform inference repeatedly (the classic VGGT-1B model contains 24 sets of repeated AA attention layers). However, as shown in the table below, the model's output is very stable, and apart from increasing the volume of the point cloud, multiple attentions barely lead to any observable increase in details visible to the naked eye.
+
+|repeat|1|2|3|4|
+|:---:|:---:|:---:|:---:|:---:|
+|output .ply|![](./Img/Saure_desk_1.png)|![](./Img/Saure_desk_2.png)|![](./Img/Saure_desk_3.png)|![](./Img/Saure_desk_4.png)|
 
 ## 4. Conclusion
 
-### 4.2 colmap reconstruction results
+### 4.1 colmap reconstruction results
 
 The images of the generated sparse point cloud and dense point cloud are as follows:
-![sparse](Img/sparse.png)  ![dense](Img/dense.png)
+![sparse](Img/sparse.png)
+![dense](Img/dense.png)
+
+### 4.2 VGGT reconstruction results
 
 
 ## 5. References & Acknowledgements
