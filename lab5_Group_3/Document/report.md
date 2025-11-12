@@ -31,7 +31,7 @@ And here we display some of the generated gray codes.
 
 ### 2.2. Calibrate the Camera-Projector System
 
-We place the chessboard on the wall with different positions and angles, and then project the gray codes on the chessboard and take pictures.After the aquisition of the data, we got 3 sets of images and each set contains 44 images.
+We place the chessboard on the wall with different positions and angles, and then project the gray codes on the chessboard and take pictures.After the aquisition of the data, we got 5 sets of images and each set contains 46(2(vertical/horizontal)* 11(nbits) * 2(normal/inverted) + 2(reference black/white)) images.
 
 We use the software from [http://mesh.brown.edu/calibration/](http://mesh.brown.edu/calibration/) to calibrate the system.This software/script can calibrate the system automatically and print out the result.
 
